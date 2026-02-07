@@ -1,0 +1,16 @@
+import { configureStore } from '@reduxjs/toolkit';
+import moduleReducer from '../slices/moduleSlice';
+import testResultReducer from '../slices/testResultSlice';
+import authReducer from '../slices/authSlice';
+import sectionReducer from '../slices/sectionSlice';
+
+const store = configureStore({
+    reducer: {
+        modules: moduleReducer,
+        testResults: testResultReducer,
+        auth: authReducer,
+        sections: sectionReducer,
+    },
+});
+
+export default store;

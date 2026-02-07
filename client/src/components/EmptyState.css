@@ -1,0 +1,47 @@
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 48px 24px;
+    background: #282828;
+    border-radius: 12px;
+    border: 1px dashed #3E3E3E;
+    color: #AFAFAF;
+}
+
+.empty-state__icon {
+    width: 64px;
+    height: 64px;
+    background: #333;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    color: #5C5C5C;
+}
+
+.empty-state__icon svg {
+    width: 32px;
+    height: 32px;
+}
+
+.empty-state__title {
+    font-size: 20px;
+    font-weight: 600;
+    color: white;
+    margin: 0 0 8px 0;
+}
+
+.empty-state__message {
+    font-size: 15px;
+    color: #8A8A8A;
+    margin: 0;
+    max-width: 400px;
+}
+
+.empty-state__action {
+    margin-top: 24px;
+}

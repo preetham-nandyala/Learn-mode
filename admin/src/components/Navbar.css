@@ -1,0 +1,108 @@
+/* Navbar Styles */
+.navbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(40, 40, 40, 0.9);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #3E3E3E;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.navbar__inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+    height: 64px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.navbar__logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.navbar__logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #FF375F, #FF8A00);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(255, 55, 95, 0.3);
+}
+
+.navbar__logo-icon svg {
+    width: 20px;
+    height: 20px;
+    color: white;
+}
+
+.navbar__logo-text {
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+    letter-spacing: -0.5px;
+}
+
+.navbar__links {
+    display: none;
+    align-items: center;
+    gap: 32px;
+}
+
+@media (min-width: 768px) {
+    .navbar__links {
+        display: flex;
+    }
+}
+
+.navbar__link {
+    font-size: 14px;
+    font-weight: 500;
+    color: #AFAFAF;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.navbar__link:hover {
+    color: white;
+}
+
+.navbar__link--active {
+    color: #FF375F;
+}
+
+.navbar__actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.navbar__admin-badge {
+    background: rgba(255, 55, 95, 0.1);
+    color: #FF375F;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid rgba(255, 55, 95, 0.2);
+}
+
+.navbar__logout {
+    font-size: 14px;
+    font-weight: 500;
+    color: #AFAFAF;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.navbar__logout:hover {
+    color: white;
+}
