@@ -1,18 +1,19 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { fetchModules, fetchModuleById } from '../thunks/moduleThunks';
+import { fetchModules, fetchModuleById, fetchTestQuestions } from '../thunks/moduleThunks';
 
 const moduleSlice = createSlice({
     name: 'modules',
     initialState: {
         items: [],
         currentModule: null,
+        testQuestions: [],
         loading: false,
         error: null,
     },
     reducers: {},
     extraReducers: (builder) => {
         builder
-            // Fetch All
+            // ... (keep previous cases)
             .addCase(fetchModules.pending, (state) => {
                 state.loading = true;
                 state.error = null;
@@ -36,6 +37,20 @@ const moduleSlice = createSlice({
                 state.currentModule = action.payload;
             })
             .addCase(fetchModuleById.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.error.message;
+            })
+            // Fetch Test Questions
+            .addCase(fetchTestQuestions.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+                state.testQuestions = []; // Clear previous questions
+            })
+            .addCase(fetchTestQuestions.fulfilled, (state, action) => {
+                state.loading = false;
+                state.testQuestions = action.payload;
+            })
+            .addCase(fetchTestQuestions.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.error.message;
             });

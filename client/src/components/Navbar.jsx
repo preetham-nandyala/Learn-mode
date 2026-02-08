@@ -27,8 +27,18 @@ const Navbar = ({ userName, onLogout, activeLink }) => {
                     >
                         Modules
                     </Link>
-                    <a href="#" className="client-home__nav-link">Problems</a>
-                    <a href="#" className="client-home__nav-link">Discuss</a>
+                    <Link
+                        to="/challenges"
+                        className={`client-home__nav-link ${activeLink === '/challenges' ? 'client-home__nav-link--active' : ''}`}
+                    >
+                        Challenges
+                    </Link>
+                    <Link
+                        to="/challenges"
+                        className={`client-home__nav-link ${activeLink === '/challenges' ? 'client-home__nav-link--active' : ''}`}
+                    >
+                        Contests
+                    </Link>
                 </div>
 
                 <div className="client-home__nav-actions">

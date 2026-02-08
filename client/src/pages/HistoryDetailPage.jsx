@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTestHistory } from '../redux/thunks/testResultThunks';
 // api removed
@@ -8,18 +8,19 @@ import './HistoryDetailPage.css';
 const HistoryDetailPage = () => {
     const { historyId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const dispatch = useDispatch();
 
     const { history: allHistory, loading, error } = useSelector(state => state.testResults);
 
     // Derived state
-    const historyData = allHistory.find(h => h._id === historyId);
+    const historyData = (allHistory || []).find(h => h._id === historyId);
 
     useEffect(() => {
-        if (allHistory.length === 0) {
+        if (!allHistory || allHistory.length === 0) {
             dispatch(fetchTestHistory());
         }
-    }, [dispatch, allHistory.length]);
+    }, [dispatch, allHistory]);
 
     // Handle error redirect if needed (unauthorized) - Slice error usually string
     useEffect(() => {
@@ -33,6 +34,7 @@ const HistoryDetailPage = () => {
             case 'Basics': return 'easy';
             case 'Intermediate': return 'medium';
             case 'Advance': return 'hard';
+            case 'Final': return 'hard';
             default: return 'easy';
         }
     };
@@ -42,6 +44,7 @@ const HistoryDetailPage = () => {
             case 'Basics': return 'Easy';
             case 'Intermediate': return 'Medium';
             case 'Advance': return 'Hard';
+            case 'Final': return 'Final Assessment';
             default: return lvl;
         }
     };
@@ -81,7 +84,7 @@ const HistoryDetailPage = () => {
             {/* Navigation - Shows current test info */}
             <nav className="history-detail__nav">
                 <div className="history-detail__nav-left">
-                    <Link to={moduleId ? `/module/${moduleId}` : '/home'} className="history-detail__back">
+                    <Link to={moduleId && location.state?.from === 'challenges' ? `/challenges/${moduleId}` : (moduleId ? `/module/${moduleId}` : '/home')} className="history-detail__back">
                         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
@@ -220,6 +223,7 @@ const HistoryDetailPage = () => {
                                     <Link
                                         key={item._id}
                                         to={`/history/${item._id}`}
+                                        state={location.state}
                                         className={`history-detail__history-item ${isActive ? 'history-detail__history-item--active' : ''}`}
                                     >
                                         <div className={`history-detail__history-bar history-detail__history-bar--${cls}`}></div>

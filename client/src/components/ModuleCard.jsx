@@ -4,12 +4,12 @@ import TechLogo from './TechLogo';
 import { getTechColors } from '../utils/themeUtils';
 import './ModuleCard.css';
 
-const ModuleCard = ({ module }) => {
+const ModuleCard = ({ module, to }) => {
     const colors = getTechColors(module.title);
 
     return (
         <Link
-            to={`/module/${module._id}`}
+            to={to || `/module/${module._id}`}
             className="client-home__module-card"
             style={{
                 pointerEvents: module.isDisplay === false ? 'none' : 'auto',
@@ -23,7 +23,7 @@ const ModuleCard = ({ module }) => {
                     '--text-primary': colors.text || '#ffffff',
                     '--text-secondary': colors.text ? `${colors.text}CC` : 'rgba(255, 255, 255, 0.9)',
                     '--border-color': colors.border,
-                    filter: module.isDisplay === false ? 'blur(3px)' : 'none',
+                    filter: 'none',
                     opacity: module.isDisplay === false ? 0.7 : 1
                 }}
             >
@@ -55,10 +55,9 @@ const ModuleCard = ({ module }) => {
                     color: 'white'
                 }}>
                     <div style={{
-                        background: 'rgba(0,0,0,0.4)',
+                        background: 'rgba(0,0,0,0.6)',
                         borderRadius: '50%',
-                        padding: '12px',
-                        backdropFilter: 'blur(4px)'
+                        padding: '12px'
                     }}>
                         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="32" height="32">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />

@@ -10,3 +10,8 @@ export const fetchModuleById = createAsyncThunk('modules/fetchModuleById', async
     const response = await api.get(`/modules/${id}`);
     return response.data;
 });
+
+export const fetchTestQuestions = createAsyncThunk('modules/fetchTestQuestions', async ({ id, level }) => {
+    const response = await api.get(`/modules/${id}/test-questions/${level}`);
+    return response.data;
+});

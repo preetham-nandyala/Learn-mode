@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchModuleById } from '../redux/thunks/moduleThunks';
+import { fetchModuleById, fetchTestQuestions } from '../redux/thunks/moduleThunks';
 import { submitTestResult } from '../redux/thunks/testResultThunks';
 import Spinner from '../components/Spinner';
 import EmptyState from '../components/EmptyState';
@@ -10,49 +10,142 @@ import './TestPage.css';
 const TestPage = () => {
     const { id, level } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
+
+    // Redirect old Final URL to new secure page
+    useEffect(() => {
+        if (level === 'Final') {
+            navigate(`/challenges/${id}/final-test`, { replace: true });
+        }
+    }, [level, id, navigate]);
     const dispatch = useDispatch();
 
-    // Redux State
-    const { currentModule: moduleData, loading } = useSelector(state => state.modules);
+    const isChallenge = location.pathname.includes('/challenges');
+    const backLink = isChallenge ? `/challenges/${id}` : `/module/${id}`;
 
-    // const [moduleData ... removed
+    // Redux State
+    const { currentModule: moduleData, testQuestions: reduxQuestions, loading } = useSelector(state => state.modules);
+
     const [testState, setTestState] = useState('running'); // running, submitted
     const [testQuestions, setTestQuestions] = useState([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [timeLeft, setTimeLeft] = useState(0);
     const [testAnswers, setTestAnswers] = useState({});
     const [testResult, setTestResult] = useState(null);
+    const [showInstructions, setShowInstructions] = useState(level === 'Final');
+    const [showExitConfirm, setShowExitConfirm] = useState(false);
+    const [showSubmitModal, setShowSubmitModal] = useState(false);
     const timerRef = useRef(null);
 
-    const shuffleArray = (array) => {
-        for (let i = array.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [array[i], array[j]] = [array[j], array[i]];
-        }
-        return array;
-    };
-
+    // Initial Fetch (Module and Questions)
     useEffect(() => {
+        setTestQuestions([]); // Clear current local questions to force loading UI
         if (!moduleData || moduleData._id !== id) {
             dispatch(fetchModuleById(id));
         }
-    }, [dispatch, id, moduleData]);
+        dispatch(fetchTestQuestions({ id, level }));
+    }, [dispatch, id, level]);
+
+    // Initialize Test state when Questions are loaded
+    useEffect(() => {
+        if (reduxQuestions && reduxQuestions.length > 0) {
+            setTestQuestions(reduxQuestions);
+
+            // Try to restore session from localStorage
+            const storageKey = `test_session_${id}_${level}`;
+            const savedSession = localStorage.getItem(storageKey);
+
+            if (savedSession) {
+                const session = JSON.parse(savedSession);
+                setTestAnswers(session.answers || {});
+                setCurrentQuestionIndex(session.currentIndex || 0);
+                setShowInstructions(false);
+                setTestState('running');
+
+                // Calculate remaining time based on saved end time
+                const remaining = Math.max(0, Math.floor((session.endTime - Date.now()) / 1000));
+                setTimeLeft(remaining);
+
+                if (remaining <= 0) {
+                    submitTest();
+                }
+            } else {
+                // Set fresh time based on level
+                let timeInSeconds = 0;
+                if (level === 'Basics') timeInSeconds = 5 * 60;
+                else if (level === 'Intermediate') timeInSeconds = 10 * 60;
+                else if (level === 'Advance') timeInSeconds = 15 * 60;
+                else if (level === 'Final') timeInSeconds = 30 * 60;
+                else timeInSeconds = reduxQuestions.length * 60;
+
+                setTimeLeft(timeInSeconds);
+
+                // Don't auto-start if in instructions mode
+                if (level !== 'Final') {
+                    setTestState('running');
+                } else {
+                    setTestState('instructions');
+                }
+
+                setCurrentQuestionIndex(0);
+                setTestAnswers({});
+            }
+        } else if (!loading && reduxQuestions && reduxQuestions.length === 0) {
+            setTestQuestions([]);
+        }
+    }, [reduxQuestions, loading, level, id]);
+
+    // Save session to localStorage whenever state changes
+    useEffect(() => {
+        if (testState === 'running' && testQuestions.length > 0) {
+            const storageKey = `test_session_${id}_${level}`;
+            const session = {
+                answers: testAnswers,
+                currentIndex: currentQuestionIndex,
+                endTime: Date.now() + (timeLeft * 1000)
+            };
+            localStorage.setItem(storageKey, JSON.stringify(session));
+        }
+    }, [testAnswers, currentQuestionIndex, timeLeft, testState, id, level, testQuestions.length]);
 
     useEffect(() => {
-        if (moduleData && (moduleData._id === id || moduleData._id)) {
-            const filtered = (moduleData.questions || []).filter(q => (q.level || 'Basics') === level);
-            if (filtered.length > 0) {
-                // Check if we haven't initialized yet or strict reset needed? 
-                // Since component remounts on route change, testQuestions starts []
-                // We should only set if empty to avoid reset on re-renders, 
-                // UNLESS level changed. Dependencies cover it.
-                // But better to check testQuestions.length === 0
-                const shuffled = shuffleArray([...filtered]);
-                setTestQuestions(shuffled);
-                setTimeLeft(shuffled.length * 60);
+        if (testState !== 'running') return;
+
+        const preventDefault = (e) => {
+            e.preventDefault();
+            return false;
+        };
+
+        const handleKeyDown = (e) => {
+            // Block Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+U, etc.
+            if (e.ctrlKey || e.metaKey) {
+                const blockedKeys = ['c', 'v', 'x', 'u', 's', 'p', 'a'];
+                if (blockedKeys.includes(e.key.toLowerCase())) {
+                    e.preventDefault();
+                    return false;
+                }
             }
-        }
-    }, [moduleData, level, id]);
+            // Block F12
+            if (e.key === 'F12') {
+                e.preventDefault();
+                return false;
+            }
+        };
+
+        document.addEventListener('copy', preventDefault, true);
+        document.addEventListener('cut', preventDefault, true);
+        document.addEventListener('paste', preventDefault, true);
+        document.addEventListener('contextmenu', preventDefault, true);
+        document.addEventListener('keydown', handleKeyDown, true);
+
+        return () => {
+            document.removeEventListener('copy', preventDefault, true);
+            document.removeEventListener('cut', preventDefault, true);
+            document.removeEventListener('paste', preventDefault, true);
+            document.removeEventListener('contextmenu', preventDefault, true);
+            document.removeEventListener('keydown', handleKeyDown, true);
+        };
+    }, [testState]);
 
     useEffect(() => {
         if (testState === 'running' && timeLeft > 0 && testQuestions.length > 0) {
@@ -90,8 +183,11 @@ const TestPage = () => {
             score,
             totalQuestions: testQuestions.length,
             answers: answersPayload,
-            // questions: testQuestions // Redundant to send full questions back to API usually, but local state uses it
         };
+
+        // Clear saved session upon submission
+        localStorage.removeItem(`test_session_${id}_${level}`);
+
         setTestResult({ ...resultData, questions: testQuestions }); // Keep questions for local review
         setTestState('submitted');
 
@@ -103,16 +199,13 @@ const TestPage = () => {
     };
 
     const resetTest = () => {
-        const filtered = (moduleData.questions || []).filter(q => (q.level || 'Basics') === level);
-        if (filtered.length > 0) {
-            const shuffled = shuffleArray([...filtered]);
-            setTestQuestions(shuffled);
-            setTimeLeft(shuffled.length * 60);
-        }
-        setTestAnswers({});
+        // Clear local state to trigger loading view if needed
+        setTestQuestions([]);
         setTestResult(null);
         setTestState('running');
-        setCurrentQuestionIndex(0);
+        // To restart, we should actually re-fetch test questions 
+        // because the submission just rotated the queue!
+        dispatch(fetchTestQuestions({ id, level }));
     };
 
     const formatTime = (seconds) => {
@@ -126,6 +219,7 @@ const TestPage = () => {
             case 'Basics': return 'easy';
             case 'Intermediate': return 'medium';
             case 'Advance': return 'hard';
+            case 'Final': return 'hard';
             default: return 'easy';
         }
     };
@@ -135,32 +229,121 @@ const TestPage = () => {
             case 'Basics': return 'Level 1 - Easy';
             case 'Intermediate': return 'Level 2 - Medium';
             case 'Advance': return 'Level 3 - Hard';
+            case 'Final': return 'Challenge Assessment';
             default: return lvl;
         }
     };
 
-    if (!moduleData) return (
-        <div className="test-page__loading">
-            <Spinner />
-            Loading...
-        </div>
-    );
+    const startTest = () => {
+        setShowInstructions(false);
+        setTestState('running');
+    };
 
-    if (testQuestions.length === 0) {
+    const levelClass = getLevelClass(level);
+
+    // INSTRUCTIONS VIEW - Show this immediately even if questions are loading
+    if (showInstructions && level === 'Final') {
         return (
-            <div className="test-page__empty">
-                <EmptyState
-                    title="No Questions Available"
-                    message="There are no questions for this level yet."
-                    action={
-                        <Link to={`/module/${id}`} className="test-page__empty-btn">Back to Module</Link>
-                    }
-                />
+            <div className="test-page test-page--instructions">
+                <nav className="test-page__nav">
+                    <div className="test-page__nav-left">
+                        <Link to={backLink} className="test-page__back">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                            Back
+                        </Link>
+                        <span className="test-page__level-badge test-page__level-badge--hard">
+                            <svg className="test-page__badge-icon" fill="currentColor" viewBox="0 0 24 24" style={{ width: '14px', height: '14px', marginRight: '6px', verticalAlign: 'middle' }}>
+                                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                            </svg>
+                            FINAL ASSESSMENT
+                        </span>
+                    </div>
+                </nav>
+
+                <div className="test-page__instructions-container">
+                    <div className="test-page__instructions-card">
+                        <div className="test-page__instructions-header">
+                            <div className="test-page__instructions-icon">📜</div>
+                            <h1>Final Assessment Rules</h1>
+                            <p>Please read the following instructions carefully before starting the test.</p>
+                        </div>
+
+                        <div className="test-page__rules-grid">
+                            <div className="test-page__rule-item">
+                                <div className="test-page__rule-icon">🕒</div>
+                                <div className="test-page__rule-text">
+                                    <h3>30 Minutes</h3>
+                                    <p>The test window is strictly 30 minutes. Timer starts once you click 'Begin Test'.</p>
+                                </div>
+                            </div>
+                            <div className="test-page__rule-item">
+                                <div className="test-page__rule-icon">❓</div>
+                                <div className="test-page__rule-text">
+                                    <h3>Comprehensive</h3>
+                                    <p>Questions are pooled from all difficulty levels (Easy, Medium, Hard).</p>
+                                </div>
+                            </div>
+                            <div className="test-page__rule-item">
+                                <div className="test-page__rule-icon">📈</div>
+                                <div className="test-page__rule-text">
+                                    <h3>Passing Grade</h3>
+                                    <p>You need at least 50% score to pass this final assessment.</p>
+                                </div>
+                            </div>
+                            <div className="test-page__rule-item">
+                                <div className="test-page__rule-icon">🔒</div>
+                                <div className="test-page__rule-text">
+                                    <h3>No Tab Switching</h3>
+                                    <p>Please stay on this tab. Switching tabs may result in automatic submission.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <ul className="test-page__rules-list">
+                            <li>You can skip questions and return to them using the navigation map.</li>
+                            <li>Each question has 4 options with only one correct answer.</li>
+                            <li>There is no negative marking for incorrect answers.</li>
+                            <li>The test will automatically submit when the timer hits zero.</li>
+                        </ul>
+
+                        <div className="test-page__instructions-footer">
+                            <button onClick={startTest} className="test-page__begin-btn">
+                                I Understand, Begin Test
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     }
 
-    const levelClass = getLevelClass(level);
+    if (loading || testQuestions.length === 0) {
+        if (!loading && testQuestions.length === 0 && reduxQuestions && reduxQuestions.length === 0) {
+            return (
+                <div className="test-page__empty">
+                    <EmptyState
+                        title="No Questions Available"
+                        message="There are no questions for this level yet."
+                        action={
+                            <Link to={backLink} className="test-page__empty-btn">Back to Module</Link>
+                        }
+                    />
+                </div>
+            );
+        }
+
+        return (
+            <div className="test-page__loading">
+                <Spinner />
+                Loading Questions...
+            </div>
+        );
+    }
 
     // RESULTS VIEW - Split Layout
     if (testState === 'submitted' && testResult) {
@@ -172,7 +355,7 @@ const TestPage = () => {
             <div className="test-page">
                 <nav className="test-page__nav">
                     <div className="test-page__nav-left">
-                        <Link to={`/module/${id}`} className="test-page__back">
+                        <Link to={backLink} className="test-page__back">
                             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
@@ -281,24 +464,26 @@ const TestPage = () => {
                                 <p className="test-page__results-stat-label">Wrong</p>
                             </div>
                         </div>
-                        <Link to={`/module/${id}`} className="test-page__results-btn">Back to Module</Link>
+                        <Link to={backLink} className="test-page__results-btn">Back to Module</Link>
                     </div>
                 </div>
             </div>
         );
     }
 
+
+
     // RUNNING TEST VIEW
     return (
         <div className="test-page">
             <nav className="test-page__nav">
                 <div className="test-page__nav-left">
-                    <Link to={`/module/${id}`} className="test-page__back">
+                    <button onClick={() => setShowExitConfirm(true)} className="test-page__back-btn">
                         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                         Exit
-                    </Link>
+                    </button>
                     <span className="test-page__progress">Q {currentQuestionIndex + 1}/{testQuestions.length}</span>
                     <span className={`test-page__level-badge test-page__level-badge--${levelClass}`}>
                         {getLevelName(level)}
@@ -310,7 +495,7 @@ const TestPage = () => {
                     </svg>
                     {formatTime(timeLeft)}
                 </div>
-                <button onClick={submitTest} className="test-page__finish">Finish Test</button>
+                <button onClick={() => setShowSubmitModal(true)} className="test-page__finish">Finish Test</button>
             </nav>
 
             <div className="test-page__content">
@@ -396,6 +581,67 @@ const TestPage = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Exit Confirmation Modal */}
+            {showExitConfirm && (
+                <div className="test-page__modal-overlay">
+                    <div className="test-page__modal">
+                        <div className="test-page__modal-icon">⚠️</div>
+                        <h2 className="test-page__modal-title">Caution</h2>
+                        <p className="test-page__modal-text">
+                            Are you sure you want to exit? Your progress will be lost and this attempt will NOT be saved.
+                        </p>
+                        <div className="test-page__modal-actions">
+                            <button
+                                onClick={() => setShowExitConfirm(false)}
+                                className="test-page__modal-btn test-page__modal-btn--cancel"
+                            >
+                                No, Continue
+                            </button>
+                            <button
+                                onClick={() => {
+                                    clearInterval(timerRef.current);
+                                    localStorage.removeItem(`test_session_${id}_${level}`);
+                                    navigate(backLink);
+                                }}
+                                className="test-page__modal-btn test-page__modal-btn--confirm"
+                            >
+                                Yes, Exit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Submit Confirmation Modal */}
+            {showSubmitModal && (
+                <div className="test-page__modal-overlay">
+                    <div className="test-page__modal">
+                        <div className="test-page__modal-icon">✅</div>
+                        <h2 className="test-page__modal-title">Ready to Submit?</h2>
+                        <p className="test-page__modal-text">
+                            You have answered <strong>{Object.keys(testAnswers).length}</strong> out of <strong>{testQuestions.length}</strong> questions. Are you sure you want to finish the test?
+                        </p>
+                        <div className="test-page__modal-actions">
+                            <button
+                                onClick={() => setShowSubmitModal(false)}
+                                className="test-page__modal-btn test-page__modal-btn--cancel"
+                            >
+                                No, Continue
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowSubmitModal(false);
+                                    submitTest();
+                                }}
+                                className="test-page__modal-btn test-page__modal-btn--confirm"
+                            >
+                                Yes, Submit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

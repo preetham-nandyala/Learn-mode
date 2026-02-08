@@ -1,41 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchModules } from '../redux/thunks/moduleThunks';
-import { logout } from '../redux/slices/authSlice';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import ModuleCard from '../components/ModuleCard';
 import LoadingGrid from '../components/LoadingGrid';
-// api removed
 import './Home.css';
 
 const Home = () => {
-    const dispatch = useDispatch();
     const { items: modules, loading: isLoading } = useSelector(state => state.modules);
-    const { user } = useSelector(state => state.auth);
-    const userName = user?.name || 'Student'; // Fallback
-    const navigate = useNavigate();
-
-    useEffect(() => {
-        if (modules.length === 0) {
-            dispatch(fetchModules())
-                .unwrap()
-                .catch(error => {
-                    console.error('Failed to fetch modules', error);
-                });
-        }
-    }, [dispatch]);
-
-    const handleLogout = () => {
-        dispatch(logout());
-        navigate('/');
-    };
 
     return (
         <div className="client-home">
-            <Navbar userName={userName} onLogout={handleLogout} activeLink="/home" />
-
             {/* Hero */}
             <div className="client-home__hero">
                 <div className="client-home__hero-bg"></div>
@@ -90,7 +64,7 @@ const Home = () => {
                     <Link to="/modules" className="client-home__more-btn" style={{ textDecoration: 'none' }}>More</Link>
                 </div>
 
-                {isLoading ? (
+                {isLoading && modules.length === 0 ? (
                     <LoadingGrid />
                 ) : modules.length === 0 ? (
                     <div className="client-home__empty">
@@ -117,8 +91,6 @@ const Home = () => {
                     </div>
                 )}
             </div>
-
-            <Footer />
         </div>
     );
 };
