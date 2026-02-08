@@ -34,8 +34,8 @@ const Navbar = ({ userName, onLogout, activeLink }) => {
                         Challenges
                     </Link>
                     <Link
-                        to="/challenges"
-                        className={`client-home__nav-link ${activeLink === '/challenges' ? 'client-home__nav-link--active' : ''}`}
+                        to="/contests"
+                        className={`client-home__nav-link ${activeLink === '/contests' ? 'client-home__nav-link--active' : ''}`}
                     >
                         Contests
                     </Link>

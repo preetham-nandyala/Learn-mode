@@ -13,6 +13,8 @@ import ChallengesPage from './pages/ChallengesPage';
 import ChallengeView from './pages/ChallengeView';
 import HistoryDetailPage from './pages/HistoryDetailPage';
 import InterviewPage from './pages/InterviewPage';
+import ContestsPage from './pages/ContestsPage';
+import ContestTestPage from './pages/ContestTestPage';
 
 function App() {
   return (
@@ -26,12 +28,15 @@ function App() {
         <Route element={<MainLayout />}>
           <Route path="/home" element={<Home />} />
           <Route path="/modules" element={<ModulesPage />} />
+          <Route path="/contests" element={<ContestsPage />} />
           <Route path="/challenges" element={<ChallengesPage />} />
           <Route path="/history/:historyId" element={<HistoryDetailPage />} />
         </Route>
 
         {/* Detail Views (No Site-wide Navbar, handles own navigation) */}
         <Route path="/module/:id" element={<ModuleView />} />
+        <Route path="/contest/:id" element={<ContestTestPage />} />
+        <Route path="/contest/:id/secure" element={<ContestTestPage secureMode={true} />} />
         <Route path="/challenges/:id" element={<ChallengeView />} />
 
         {/* Fullscreen/Secure Routes (No Site-wide Navbar/Footer) */}
